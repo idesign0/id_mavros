@@ -143,38 +143,27 @@ private:
     system.category_eu = msg->category_eu;
     system.class_eu = msg->class_eu;
     system.operator_altitude_geo = msg->operator_altitude_geo;
-    system.timestamp = to_timestamp(msg->header);
+    // NOTE: OPEN_DRONE_ID_SYSTEM.timestamp is a v2 extension field added upstream after the
+    // MAVLink release vendored in this workspace (aerial/mavlink), so it is absent from the
+    // generated OPEN_DRONE_ID_SYSTEM struct here -> "no member named 'timestamp'". Skip it; the
+    // rest of the system message is still sent. Restore once the vendored mavlink is bumped.
 
     uas->send_message(system);
   }
 
   void system_update_cb(const mavros_msgs::msg::OpenDroneIDSystemUpdate::ConstSharedPtr msg)
   {
-    mavlink::common::msg::OPEN_DRONE_ID_SYSTEM_UPDATE system_update{};
-
-    uas->msg_set_target(system_update);
-    system_update.operator_latitude = msg->operator_latitude;
-    system_update.operator_longitude = msg->operator_longitude;
-    system_update.operator_altitude_geo = msg->operator_altitude_geo;
-    system_update.timestamp = to_timestamp(msg->header);
-
-    uas->send_message(system_update);
+    // NOTE: the MAVLink OPEN_DRONE_ID_SYSTEM_UPDATE message (id 12919) was added upstream after
+    // the MAVLink release vendored in this workspace (aerial/mavlink), so
+    // mavlink::common::msg::OPEN_DRONE_ID_SYSTEM_UPDATE does not exist here -> the original body
+    // failed to compile ("no type named 'OPEN_DRONE_ID_SYSTEM_UPDATE'"). The ROS subscription is
+    // kept for API stability but the FCU send is a no-op until the vendored mavlink is bumped.
+    (void)msg;
   }
 
-  //! ODID timestamp is a 32 bit Unix Timestamp in seconds since 00:00:00 01/01/2019.
-  uint32_t to_timestamp(const std_msgs::msg::Header & hdr)
-  {
-    auto s = hdr.stamp.sec;
-
-    // 2019.01.01 00:00:00 UTC
-    const int32_t epoch = 1546300800;
-
-    if (s > epoch) {
-      return s - epoch;
-    }
-
-    return 0;
-  }
+  // to_timestamp() removed with its only two call sites (the OPEN_DRONE_ID_SYSTEM.timestamp
+  // extension field and the OPEN_DRONE_ID_SYSTEM_UPDATE message), which are absent from the
+  // MAVLink release vendored in this workspace. Restore it alongside those when mavlink is bumped.
 
   /** A variant of mavlink::set_string_z, but for uint8_t,
    * because of broken convention on ODID messages
