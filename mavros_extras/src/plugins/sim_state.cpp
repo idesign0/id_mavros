@@ -152,19 +152,13 @@ private:
     fix_msg.header.stamp = stamp;
     fix_msg.header.frame_id = "base_link";
 
-    // Prefer higher precision int fields when available
-    const bool have_int_lat = sim_state.lat_int != 0;
-    const bool have_int_lon = sim_state.lon_int != 0;
-    if (have_int_lat) {
-      fix_msg.latitude = static_cast<double>(sim_state.lat_int) / 1e7;
-    } else {
-      fix_msg.latitude = static_cast<double>(sim_state.lat);
-    }
-    if (have_int_lon) {
-      fix_msg.longitude = static_cast<double>(sim_state.lon_int) / 1e7;
-    } else {
-      fix_msg.longitude = static_cast<double>(sim_state.lon);
-    }
+    // NOTE: the higher-precision SIM_STATE.lat_int / lon_int (int32, degE7) fields were added
+    // upstream after the MAVLink release vendored in this workspace (aerial/mavlink), so they are
+    // absent from the generated SIM_STATE struct here -> "no member named 'lat_int'". Use the
+    // float lat/lon fields the vendored dialect does provide. Restore the int-field preference when
+    // the vendored mavlink is bumped to a release that carries them.
+    fix_msg.latitude = static_cast<double>(sim_state.lat);
+    fix_msg.longitude = static_cast<double>(sim_state.lon);
     fix_msg.altitude = static_cast<double>(sim_state.alt);
 
     // No explicit status info in SIM_STATE; mark as unknown
