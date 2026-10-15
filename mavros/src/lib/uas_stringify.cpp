@@ -150,7 +150,12 @@ static const cmode_map px4_cmode_map{{
 }};
 
 // Flix modes
-static const cmode_map flix_cmode_map{{
+// Kept, but currently unreferenced: its only consumer (the MAV_AUTOPILOT::FLIX branch
+// in str_mode_v10) is disabled below because the vendored MAVLink definitions have no
+// FLIX. clang does not warn here (a dynamically-initialised std::map is not a
+// -Wunused-const-variable candidate, verified with -Wall -Wextra -Wpedantic -Werror);
+// the attribute is defensive, so other toolchains cannot turn this into a build break.
+[[maybe_unused]] static const cmode_map flix_cmode_map{{
   {0, "RAW"},
   {1, "ACRO"},
   {2, "STAB"},
@@ -227,8 +232,16 @@ std::string UAS::str_mode_v10(uint8_t base_mode, uint32_t custom_mode)
     }
   } else if (MAV_AUTOPILOT::PX4 == ap) {
     return str_mode_px4(custom_mode);
-  } else if (MAV_AUTOPILOT::FLIX == ap) {
-    return str_mode_cmap(flix_cmode_map, custom_mode);
+  // MAV_AUTOPILOT::FLIX does not exist in the vendored MAVLink message definitions
+  // (aerial/mavlink, branch release/rolling/mavlink: MAV_AUTOPILOT stops at value 20,
+  // MAV_AUTOPILOT_REFLEX), so this branch does not compile here:
+  //   uas_stringify.cpp:230:29: error: no member named 'FLIX' in
+  //     'mavlink::minimal::MAV_AUTOPILOT'
+  // Fall through to the generic custom-mode handling below, which is what mavros did
+  // before FLIX support was added. Restore the two lines verbatim once the vendored
+  // definitions carry FLIX.
+  // } else if (MAV_AUTOPILOT::FLIX == ap) {
+  //   return str_mode_cmap(flix_cmode_map, custom_mode);
   } else if (!(base_mode & enum_value(MAV_MODE_FLAG::CUSTOM_MODE_ENABLED))) {
     return str_base_mode(base_mode);
   } else {
